@@ -6,8 +6,7 @@ app = FastAPI(title="ArcHive API")
 # MUST be added before routers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this in production
-    allow_credentials=True,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

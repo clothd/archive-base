@@ -14,7 +14,7 @@ Built as a prototype for an Enbridge VP demo.
 | ORM / Migrations | SQLAlchemy 2.0 + GeoAlchemy2 + Alembic |
 | API | FastAPI |
 | Auth | python-jose (JWT) + bcrypt |
-| Object Storage | Ionos S3 (boto3 — same API as AWS S3) |
+| Object Storage | AWS S3 (boto3) |
 | Map | MapLibre GL JS (CDN) + MapTiler satellite tiles |
 | Frontend | Plain HTML + JS (no framework) |
 | Dev Infra | Docker Compose |
@@ -50,7 +50,7 @@ archive-base/
 ├── scripts/
 │   └── seed.py                  # Seed demo pipeline + users
 ├── docker-compose.yml
-└── .env                         # Never commit — see setup below
+└── .env
 ```
 
 ---
@@ -124,7 +124,7 @@ Leave `S3_ENDPOINT_URL` out of your `.env` entirely for AWS — boto3 resolves t
 
 - Docker Desktop
 - A [MapTiler](https://maptiler.com) account (free tier works)
-- An Ionos S3 bucket (see setup above)
+- An AWS S3 bucket (see setup above)
 
 ### 2. Configure `.env`
 
@@ -151,7 +151,7 @@ MAPTILER_API_KEY=your-maptiler-key
 
 ### 3. Set your MapTiler key in the frontend
 
-Open `frontend/js/map.js` and replace the placeholder on line 34:
+Open `frontend/js/map.js` and replace the placeholder near the top of the `map.on("load")` block:
 
 ```js
 const MAPTILER_KEY = "your-maptiler-key-here";
@@ -209,8 +209,11 @@ API docs at **http://localhost:8000/docs**
 3. Click any **KP pin** → side panel opens
 4. View attached documents → click **Download** → file opens
 5. Upload a new document via the drag-drop zone → appears immediately
-6. Sign out → log in as `viewer@enbridge.com`
-7. Upload button is gone — RBAC is live
+6. Click **Move** → crosshair appears → click a new spot on the route → pin snaps and relocates
+7. Click **Delete Pin** → confirm dialog → pin and its documents are removed
+8. Click **+ Add Pin** in the nav → click on the map → fill in label + chainage → pin snaps to route
+9. Sign out → log in as `viewer@enbridge.com`
+10. Upload, add, move, and delete controls are gone — RBAC is live
 
 ---
 
@@ -226,6 +229,8 @@ API docs at **http://localhost:8000/docs**
 | GET | `/pipelines/{id}/pins` | All pins as GeoJSON FeatureCollection |
 | GET | `/pins/{id}/documents` | List documents attached to a pin |
 | POST | `/pins/{id}/documents` | Upload a document to a pin |
+| DELETE | `/pins/{id}` | Delete a pin and all its documents |
+| PATCH | `/pins/{id}` | Move a pin to a new position (re-snaps to route) |
 | GET | `/documents/{id}/download` | Get presigned download URL |
 | GET | `/health` | Health check |
 
@@ -242,6 +247,7 @@ Roles are set per user: `admin`, `editor`, `viewer`.
 | View map + pins | ✅ | ✅ | ✅ |
 | Download documents | ✅ | ✅ | ✅ |
 | Upload documents | ❌ | ✅ | ✅ |
+| Add / delete / move pins | ❌ | ✅ | ✅ |
 | Register new users | ❌ | ❌ | ✅ |
 
 ---
@@ -278,7 +284,7 @@ docker compose run --rm api python /scripts/seed.py
 ## Deployment Notes
 
 - Set `SECRET_KEY` to a long random value (e.g. `openssl rand -hex 32`)
-- Tighten `allow_origins` in `backend/app/main.py` to your actual domain
+- Change `allow_origins` in `backend/app/main.py` to your actual production domain
 - Documents are never publicly accessible — all downloads go through presigned S3 URLs (1-hour expiry by default)
 - `.env` is in `.gitignore` — never commit it
 

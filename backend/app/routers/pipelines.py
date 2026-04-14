@@ -2,10 +2,8 @@ import json
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from geoalchemy2.functions import ST_AsGeoJSON
-from geoalchemy2.shape import from_shape
+from geoalchemy2.functions import ST_AsGeoJSON, ST_ClosestPoint, ST_GeomFromText
 from pydantic import BaseModel
-from shapely.geometry import Point
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user, require_role
@@ -86,11 +84,21 @@ def create_pin(
     pipeline = db.get(Pipeline, pipeline_id)
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline not found")
+
+    # Snap the click coordinates to the nearest point on the pipeline route
+    click_wkt = f"POINT({payload.lng} {payload.lat})"
+    snapped_geom = db.scalar(
+        ST_ClosestPoint(
+            pipeline.geometry,
+            ST_GeomFromText(click_wkt, 4326),
+        )
+    )
+
     pin = ChainagePin(
         pipeline_id=pipeline_id,
         chainage_km=payload.chainage_km,
         label=payload.label,
-        geometry=from_shape(Point(payload.lng, payload.lat), srid=4326),
+        geometry=snapped_geom,
     )
     db.add(pin)
     db.commit()

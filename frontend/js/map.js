@@ -217,6 +217,24 @@
   let addPinMode = false;
   let pendingCoords = null;
 
+  // Snap preview source — shows where pin will land on the route
+  map.addSource("snap-preview", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addLayer({
+    id: "snap-preview-layer",
+    type: "circle",
+    source: "snap-preview",
+    paint: {
+      "circle-radius": 9,
+      "circle-color": "#22d3ee",
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+      "circle-opacity": 0.9,
+    },
+  });
+
   addPinBtn.addEventListener("click", () => {
     addPinMode = !addPinMode;
     if (addPinMode) {
@@ -228,10 +246,23 @@
     }
   });
 
+  // Show snap preview dot while moving in add-pin mode
+  map.on("mousemove", (e) => {
+    if (!addPinMode) return;
+    map.getSource("snap-preview").setData({
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [e.lngLat.lng, e.lngLat.lat] },
+        properties: {},
+      }],
+    });
+  });
+
   map.on("click", async (e) => {
     if (!addPinMode) return;
     pendingCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-    modalCoords.textContent = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)}`;
+    modalCoords.textContent = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)} → snaps to route`;
     pinLabelInput.value = "";
     pinKpInput.value = "";
     pinModalError.textContent = "";
@@ -269,6 +300,7 @@
     addPinBtn.textContent = "+ Add Pin";
     addPinBtn.classList.remove("active");
     map.getCanvas().style.cursor = "";
+    map.getSource("snap-preview").setData({ type: "FeatureCollection", features: [] });
   }
 
   async function reloadPins() {

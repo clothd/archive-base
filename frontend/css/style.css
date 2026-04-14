@@ -260,6 +260,88 @@ body {
 .upload-msg { font-size: 12.5px; color: var(--blue); margin-top: 8px; min-height: 18px; }
 .empty-state { color: var(--gray); font-size: 13px; padding: 12px 0; }
 
+/* ── Add Pin button ──────────────────────────────────────── */
+.btn-add-pin {
+  background: var(--amber);
+  color: #1e293b;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  margin-left: 12px;
+}
+
+.btn-add-pin:hover { background: #d97706; }
+.btn-add-pin.active { background: #ef4444; color: #fff; }
+.hidden { display: none !important; }
+
+/* ── Modal ───────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 28px 32px;
+  width: 340px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.modal-coords {
+  font-size: 11.5px;
+  color: var(--gray);
+  font-family: monospace;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-modal-cancel {
+  flex: 1;
+  padding: 9px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-modal-confirm {
+  flex: 2;
+  padding: 9px;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-modal-confirm:hover { background: var(--blue); }
+.btn-modal-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ── Loading spinner ─────────────────────────────────────── */
 .spinner {
   display: inline-block;

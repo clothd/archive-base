@@ -22,9 +22,7 @@
   });
 
   // ── Map init ─────────────────────────────────────────────
-  // IMPORTANT: Replace MAPTILER_KEY_PLACEHOLDER with your MapTiler API key
-  // Get a free key at https://maptiler.com
-  const MAPTILER_KEY = "MAPTILER_KEY_PLACEHOLDER";
+  const MAPTILER_KEY = "yWmb8yiKRTHxOjFuoso9";
 
   const map = new maplibregl.Map({
     container: "map",
@@ -198,6 +196,88 @@
       setTimeout(() => { uploadMsg.textContent = ""; }, 3000);
     } catch (err) {
       uploadMsg.textContent = `Upload failed: ${err.message}`;
+    }
+  }
+
+  // ── Add Pin ───────────────────────────────────────────────
+  const addPinBtn = document.getElementById("btn-add-pin");
+  const modalBackdrop = document.getElementById("pin-modal-backdrop");
+  const modalCoords = document.getElementById("modal-coords");
+  const pinLabelInput = document.getElementById("pin-label");
+  const pinKpInput = document.getElementById("pin-kp-input");
+  const pinModalConfirm = document.getElementById("pin-modal-confirm");
+  const pinModalCancel = document.getElementById("pin-modal-cancel");
+  const pinModalError = document.getElementById("pin-modal-error");
+
+  // Show button for admin and editor
+  if (!isViewer) {
+    addPinBtn.classList.remove("hidden");
+  }
+
+  let addPinMode = false;
+  let pendingCoords = null;
+
+  addPinBtn.addEventListener("click", () => {
+    addPinMode = !addPinMode;
+    if (addPinMode) {
+      addPinBtn.textContent = "✕ Cancel";
+      addPinBtn.classList.add("active");
+      map.getCanvas().style.cursor = "crosshair";
+    } else {
+      exitAddPinMode();
+    }
+  });
+
+  map.on("click", async (e) => {
+    if (!addPinMode) return;
+    pendingCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+    modalCoords.textContent = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)}`;
+    pinLabelInput.value = "";
+    pinKpInput.value = "";
+    pinModalError.textContent = "";
+    modalBackdrop.classList.remove("hidden");
+  });
+
+  pinModalCancel.addEventListener("click", () => {
+    modalBackdrop.classList.add("hidden");
+  });
+
+  pinModalConfirm.addEventListener("click", async () => {
+    const label = pinLabelInput.value.trim();
+    const chainage_km = parseFloat(pinKpInput.value);
+    if (!label) { pinModalError.textContent = "KP label is required."; return; }
+    if (isNaN(chainage_km)) { pinModalError.textContent = "Chainage must be a number."; return; }
+
+    pinModalConfirm.disabled = true;
+    pinModalConfirm.textContent = "Saving…";
+    try {
+      await createPin(1, label, chainage_km, pendingCoords.lat, pendingCoords.lng);
+      modalBackdrop.classList.add("hidden");
+      exitAddPinMode();
+      await reloadPins();
+    } catch (err) {
+      pinModalError.textContent = err.message;
+      pinModalConfirm.disabled = false;
+      pinModalConfirm.textContent = "Add Pin";
+    }
+  });
+
+  function exitAddPinMode() {
+    addPinMode = false;
+    addPinBtn.textContent = "+ Add Pin";
+    addPinBtn.classList.remove("active");
+    map.getCanvas().style.cursor = "";
+  }
+
+  async function reloadPins() {
+    try {
+      const featureCollection = await getPipelinePins(1);
+      if (!featureCollection) return;
+      if (map.getSource("pins")) {
+        map.getSource("pins").setData(featureCollection);
+      }
+    } catch (err) {
+      console.error("Failed to reload pins:", err);
     }
   }
 

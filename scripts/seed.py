@@ -3,13 +3,15 @@ Seed script — populates demo data for the Enbridge VP demo.
 
 Run with:
     docker compose run --rm api python /scripts/seed.py
+
+To reseed (wipe pins and recreate):
+    docker compose run --rm api python /scripts/seed.py --reseed
 """
 
 import os
 import sys
 
 # In Docker the app lives at /app; locally it's at backend/
-# Try /app first (container), then fall back to sibling backend/ dir
 _app_path = "/app" if os.path.isdir("/app") else os.path.join(os.path.dirname(__file__), "..", "backend")
 sys.path.insert(0, _app_path)
 
@@ -27,6 +29,8 @@ from app.services.auth import hash_password
 engine = create_engine(settings.database_url)
 Session = sessionmaker(bind=engine)
 db = Session()
+
+RESEED = "--reseed" in sys.argv
 
 
 def run():
@@ -53,10 +57,9 @@ def run():
             print(f"  Created user: {email} ({role})")
 
     # ── Pipeline ─────────────────────────────────────────────
-    # Real-ish coordinates for a pipeline route through central Alberta
-    # This approximates a route from Calgary area NW toward Airdrie and beyond
+    # Route runs NW from Calgary through Airdrie corridor
     route_coords = [
-        (-114.0719, 51.0447),   # Calgary NW
+        (-114.0719, 51.0447),
         (-114.1050, 51.0800),
         (-114.1300, 51.1200),
         (-114.1500, 51.1600),
@@ -96,48 +99,40 @@ def run():
         print(f"  Created pipeline: {pipeline.name}")
 
     # ── Chainage pins ─────────────────────────────────────────
-    # 20 pins spaced every ~3.8 km along the route (total ~75 km)
-    # Coords interpolated approximately along route
-    pin_data = [
-        (42.0,   (-114.0719, 51.0447),  "KP 42+000"),
-        (42.5,   (-114.0850, 51.0600),  "KP 42+500"),
-        (43.0,   (-114.1000, 51.0720),  "KP 43+000"),
-        (43.5,   (-114.1150, 51.0900),  "KP 43+500"),
-        (44.0,   (-114.1300, 51.1200),  "KP 44+000"),
-        (44.5,   (-114.1380, 51.1500),  "KP 44+500"),
-        (45.0,   (-114.1500, 51.1750),  "KP 45+000"),
-        (45.5,   (-114.1580, 51.2000),  "KP 45+500"),
-        (46.0,   (-114.1680, 51.2300),  "KP 46+000"),
-        (46.5,   (-114.1780, 51.2600),  "KP 46+500"),
-        (47.0,   (-114.1850, 51.2900),  "KP 47+000"),
-        (47.5,   (-114.1950, 51.3200),  "KP 47+500"),
-        (48.0,   (-114.2000, 51.3600),  "KP 48+000"),
-        (48.5,   (-114.2080, 51.3900),  "KP 48+500"),
-        (49.0,   (-114.2150, 51.4200),  "KP 49+000"),
-        (49.5,   (-114.2200, 51.4600),  "KP 49+500"),
-        (50.0,   (-114.2250, 51.5000),  "KP 50+000"),
-        (50.5,   (-114.2350, 51.5500),  "KP 50+500"),
-        (51.0,   (-114.2450, 51.6000),  "KP 51+000"),
-        (51.5,   (-114.2550, 51.6500),  "KP 51+500"),
-        (52.0,   (-114.2650, 51.7200),  "KP 52+000"),
-    ]
+    # If reseeding, wipe existing pins for this pipeline first
+    if RESEED:
+        deleted = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline.id).delete()
+        db.flush()
+        print(f"  Deleted {deleted} existing pins (reseed mode)")
 
-    for chainage_km, (lng, lat), label in pin_data:
-        existing_pin = db.query(ChainagePin).filter(
-            ChainagePin.pipeline_id == pipeline.id,
-            ChainagePin.label == label,
-        ).first()
-        if not existing_pin:
+    existing_count = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline.id).count()
+    if existing_count > 0:
+        print(f"  {existing_count} pins already exist — skipping (use --reseed to replace)")
+    else:
+        # Interpolate pin positions EXACTLY along the pipeline LineString
+        # This guarantees every pin sits precisely on the drawn route
+        route_line = LineString(route_coords)
+        num_pins = 21  # KP 42+000 → KP 52+000 in 0.5 km steps
+        start_kp = 42.0
+
+        for i in range(num_pins):
+            fraction = i / (num_pins - 1)
+            pt = route_line.interpolate(fraction, normalized=True)
+            kp = start_kp + i * 0.5
+            whole = int(kp)
+            decimal_m = int(round((kp - whole) * 1000))
+            label = f"KP {whole:02d}+{decimal_m:03d}"
+
             pin = ChainagePin(
                 pipeline_id=pipeline.id,
-                chainage_km=chainage_km,
-                geometry=from_shape(Point(lng, lat), srid=4326),
+                chainage_km=kp,
+                geometry=from_shape(Point(pt.x, pt.y), srid=4326),
                 label=label,
             )
             db.add(pin)
 
-    db.flush()
-    print(f"  Created {len(pin_data)} chainage pins with KP notation")
+        db.flush()
+        print(f"  Created {num_pins} chainage pins (interpolated on route)")
 
     # ── Pipeline access ───────────────────────────────────────
     access_map = {

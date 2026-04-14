@@ -89,3 +89,10 @@ async function uploadDocument(pinId, file) {
 async function getDownloadUrl(documentId) {
   return apiJSON(`/documents/${documentId}/download`);
 }
+
+async function createPin(pipelineId, label, chainageKm, lat, lng) {
+  return apiJSON(`/pipelines/${pipelineId}/pins`, {
+    method: "POST",
+    body: JSON.stringify({ label, chainage_km: chainageKm, lat, lng }),
+  });
+}

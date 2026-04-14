@@ -36,6 +36,24 @@
   map.on("load", async () => {
     await loadPipeline();
     await loadPins();
+
+    // Snap preview source — must be added after map loads
+    map.addSource("snap-preview", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    map.addLayer({
+      id: "snap-preview-layer",
+      type: "circle",
+      source: "snap-preview",
+      paint: {
+        "circle-radius": 9,
+        "circle-color": "#22d3ee",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#fff",
+        "circle-opacity": 0.9,
+      },
+    });
   });
 
   // ── Pipeline route ────────────────────────────────────────
@@ -216,24 +234,6 @@
 
   let addPinMode = false;
   let pendingCoords = null;
-
-  // Snap preview source — shows where pin will land on the route
-  map.addSource("snap-preview", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
-  map.addLayer({
-    id: "snap-preview-layer",
-    type: "circle",
-    source: "snap-preview",
-    paint: {
-      "circle-radius": 9,
-      "circle-color": "#22d3ee",
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#fff",
-      "circle-opacity": 0.9,
-    },
-  });
 
   addPinBtn.addEventListener("click", () => {
     addPinMode = !addPinMode;

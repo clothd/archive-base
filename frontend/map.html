@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcHive — Pipeline Map</title>
+
+  <!-- MapLibre GL JS -->
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Offset map canvas below navbar */
+    #map { position: fixed; top: 52px; left: 0; right: 0; bottom: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Nav bar -->
+  <nav class="map-nav">
+    <div class="logo">Arc<span>Hive</span></div>
+    <div class="user-info">
+      <span id="user-email"></span>
+      <span class="user-role" id="user-role"></span>
+    </div>
+    <button class="btn-logout" id="btn-logout">Sign out</button>
+  </nav>
+
+  <!-- Map container -->
+  <div id="map"></div>
+
+  <!-- Document side panel -->
+  <aside class="doc-panel" id="doc-panel">
+    <div class="panel-header">
+      <div class="pin-label" id="panel-label"></div>
+      <div class="pin-kp" id="panel-kp"></div>
+      <button class="panel-close" id="panel-close" title="Close">✕</button>
+    </div>
+    <div class="panel-body">
+      <ul class="doc-list" id="doc-list">
+        <li class="empty-state">Select a pin on the map.</li>
+      </ul>
+
+      <!-- Upload zone (hidden for viewer role) -->
+      <div class="upload-zone" id="upload-zone">
+        <div>📎 Click or drag a file to attach it to this pin</div>
+        <input type="file" id="file-input">
+      </div>
+      <div class="upload-msg" id="upload-msg"></div>
+    </div>
+  </aside>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/map.js"></script>
+</body>
+</html>

@@ -253,6 +253,8 @@
     try {
       await createPin(1, label, chainage_km, pendingCoords.lat, pendingCoords.lng);
       modalBackdrop.classList.add("hidden");
+      pinModalConfirm.disabled = false;
+      pinModalConfirm.textContent = "Add Pin";
       exitAddPinMode();
       await reloadPins();
     } catch (err) {

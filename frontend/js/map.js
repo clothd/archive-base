@@ -133,6 +133,8 @@
 
   // ── Document panel ────────────────────────────────────────
   let activePinId = null;
+  let activePinLabel = null;
+  let activePinChainage = null;
 
   const panel = document.getElementById("doc-panel");
   const panelLabel = document.getElementById("panel-label");
@@ -141,19 +143,27 @@
   const uploadZone = document.getElementById("upload-zone");
   const fileInput = document.getElementById("file-input");
   const uploadMsg = document.getElementById("upload-msg");
+  const pinActions = document.getElementById("pin-actions");
+  const btnDeletePin = document.getElementById("btn-delete-pin");
+  const btnMovePin = document.getElementById("btn-move-pin");
+  const moveMsg = document.getElementById("move-msg");
 
   document.getElementById("panel-close").addEventListener("click", () => {
     panel.classList.remove("open");
     activePinId = null;
+    if (movePinMode) exitMovePinMode();
   });
 
-  // Hide upload for viewers
+  // Hide upload and pin actions for viewers
   if (isViewer) {
     uploadZone.classList.add("hidden");
+    pinActions.classList.add("hidden");
   }
 
   async function openDocPanel(pinId, label, chainageKm) {
     activePinId = pinId;
+    activePinLabel = label;
+    activePinChainage = chainageKm;
     panelLabel.textContent = label;
     panelKp.textContent = `KP ${chainageKm.toFixed(3)} km`;
     docList.innerHTML = '<li class="empty-state">Loading…</li>';
@@ -217,6 +227,50 @@
     }
   }
 
+  // ── Delete / Move pin ─────────────────────────────────────
+  let movePinMode = false;
+
+  if (!isViewer) {
+    btnDeletePin.addEventListener("click", async () => {
+      if (!activePinId) return;
+      if (!confirm(`Delete pin "${activePinLabel}"? This will also remove all attached documents.`)) return;
+      btnDeletePin.disabled = true;
+      try {
+        await deletePin(activePinId);
+        panel.classList.remove("open");
+        activePinId = null;
+        await reloadPins();
+      } catch (err) {
+        alert("Delete failed: " + err.message);
+        btnDeletePin.disabled = false;
+      }
+    });
+
+    btnMovePin.addEventListener("click", () => {
+      if (!activePinId) return;
+      if (movePinMode) {
+        exitMovePinMode();
+        return;
+      }
+      movePinMode = true;
+      btnMovePin.textContent = "✕ Cancel Move";
+      btnMovePin.classList.add("active");
+      moveMsg.textContent = "Click on the map to set the new position.";
+      map.getCanvas().style.cursor = "crosshair";
+    });
+  }
+
+  function exitMovePinMode() {
+    movePinMode = false;
+    if (btnMovePin) {
+      btnMovePin.textContent = "Move";
+      btnMovePin.classList.remove("active");
+    }
+    if (moveMsg) moveMsg.textContent = "";
+    map.getCanvas().style.cursor = "";
+    map.getSource("snap-preview").setData({ type: "FeatureCollection", features: [] });
+  }
+
   // ── Add Pin ───────────────────────────────────────────────
   const addPinBtn = document.getElementById("btn-add-pin");
   const modalBackdrop = document.getElementById("pin-modal-backdrop");
@@ -246,9 +300,9 @@
     }
   });
 
-  // Show snap preview dot while moving in add-pin mode
+  // Show snap preview dot while moving in add-pin or move-pin mode
   map.on("mousemove", (e) => {
-    if (!addPinMode) return;
+    if (!addPinMode && !movePinMode) return;
     map.getSource("snap-preview").setData({
       type: "FeatureCollection",
       features: [{
@@ -260,6 +314,22 @@
   });
 
   map.on("click", async (e) => {
+    if (movePinMode) {
+      const { lat, lng } = e.lngLat;
+      moveMsg.textContent = "Saving…";
+      btnMovePin.disabled = true;
+      try {
+        await movePin(activePinId, lat, lng);
+        exitMovePinMode();
+        btnMovePin.disabled = false;
+        await reloadPins();
+        await refreshDocs(activePinId);
+      } catch (err) {
+        moveMsg.textContent = "Move failed: " + err.message;
+        btnMovePin.disabled = false;
+      }
+      return;
+    }
     if (!addPinMode) return;
     pendingCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
     modalCoords.textContent = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)} → snaps to route`;

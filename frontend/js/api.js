@@ -96,3 +96,18 @@ async function createPin(pipelineId, label, chainageKm, lat, lng) {
     body: JSON.stringify({ label, chainage_km: chainageKm, lat, lng }),
   });
 }
+
+async function deletePin(pinId) {
+  const res = await apiFetch(`/pins/${pinId}`, { method: "DELETE" });
+  if (!res || !res.ok) {
+    const err = await res?.json().catch(() => ({ detail: "Delete failed" }));
+    throw new Error(err?.detail || "Delete failed");
+  }
+}
+
+async function movePin(pinId, lat, lng) {
+  return apiJSON(`/pins/${pinId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ lat, lng }),
+  });
+}

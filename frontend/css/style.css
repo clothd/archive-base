@@ -342,6 +342,54 @@ body {
 .btn-modal-confirm:hover { background: var(--blue); }
 .btn-modal-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── Pin actions ─────────────────────────────────────────── */
+.pin-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pin-actions.hidden { display: none !important; }
+
+.btn-move-pin {
+  flex: 1;
+  padding: 8px;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-move-pin:hover { background: #e2e8f0; }
+.btn-move-pin.active { background: var(--amber); border-color: var(--amber); }
+.btn-move-pin:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-delete-pin {
+  flex: 1;
+  padding: 8px;
+  background: #fff0f0;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--red);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-delete-pin:hover { background: #fee2e2; }
+.btn-delete-pin:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.move-msg {
+  font-size: 12.5px;
+  color: var(--blue);
+  margin-top: 8px;
+  min-height: 18px;
+}
+
 /* ── Loading spinner ─────────────────────────────────────── */
 .spinner {
   display: inline-block;

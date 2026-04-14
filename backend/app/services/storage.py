@@ -35,3 +35,7 @@ def get_presigned_url(key: str, expires_in: int = 3600) -> str:
         Params={"Bucket": settings.s3_bucket_name, "Key": key},
         ExpiresIn=expires_in,
     )
+
+
+def delete_file(key: str) -> None:
+    s3.delete_object(Bucket=settings.s3_bucket_name, Key=key)

@@ -55,23 +55,80 @@ archive-base/
 
 ---
 
+## AWS S3 Setup
+
+### 1. Create an IAM user with S3 access
+
+1. Go to [AWS IAM Console](https://console.aws.amazon.com/iam) → **Users → Create user**
+2. Name it something like `archive-app`
+3. On the **Permissions** step, choose **Attach policies directly**
+4. Attach **AmazonS3FullAccess** (or create a scoped policy — see below)
+5. After creation, go to the user → **Security credentials → Access keys → Create access key**
+6. Choose **Application running outside AWS**, click through, copy both the **Access Key ID** and **Secret Access Key** — the secret is only shown once
+
+**Scoped IAM policy (recommended over FullAccess):**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME"
+    }
+  ]
+}
+```
+
+### 2. Bucket configuration
+
+- **Block all public access** — leave this ON (the default). Documents are served via short-lived **presigned URLs**, never public links.
+- **Region** — note which region you created the bucket in (e.g. `us-east-2`) and put it in `S3_REGION` in your `.env`.
+
+### 3. Set the bucket CORS policy
+
+Required so presigned download URLs open correctly in the browser.
+
+In the AWS Console: **S3 → Your Bucket → Permissions → CORS → Edit**
+
+Paste this JSON:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedOrigins": ["*"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+> For production, replace `"*"` in `AllowedOrigins` with your actual domain (e.g. `"https://yourdomain.com"`).
+
+### 4. Note on `s3_endpoint_url`
+
+Leave `S3_ENDPOINT_URL` out of your `.env` entirely for AWS — boto3 resolves the endpoint automatically from the region. The field is only needed for non-AWS S3-compatible providers (Ionos, MinIO, etc.).
+
+---
+
 ## Quick Start
 
 ### 1. Prerequisites
 
 - Docker Desktop
 - A [MapTiler](https://maptiler.com) account (free tier works)
-- An Ionos S3 bucket (or any S3-compatible storage)
+- An Ionos S3 bucket (see setup above)
 
 ### 2. Configure `.env`
 
-Copy the example and fill in your keys:
-
-```bash
-cp .env .env.local  # keep a backup
-```
-
-Edit `.env`:
+Edit `.env` at the project root — never commit this file:
 
 ```env
 # Database (leave as-is for local Docker)
@@ -82,11 +139,11 @@ SECRET_KEY=your-super-secret-key-change-in-prod-make-it-long
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
-# Ionos S3 — get from your Ionos dashboard → Object Storage → Access Keys
-S3_ENDPOINT_URL=https://s3-eu-central-1.ionoscloud.com
-S3_ACCESS_KEY=your-ionos-access-key
-S3_SECRET_KEY=your-ionos-secret-key
-S3_BUCKET_NAME=archive-docs
+# AWS S3 — IAM → Users → your user → Security credentials → Access keys
+S3_ACCESS_KEY=your-aws-access-key-id
+S3_SECRET_KEY=your-aws-secret-access-key
+S3_BUCKET_NAME=your-bucket-name
+S3_REGION=us-east-2
 
 # MapTiler — get from maptiler.com/account/keys (free tier)
 MAPTILER_API_KEY=your-maptiler-key

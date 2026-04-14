@@ -5,12 +5,15 @@ import boto3
 from app.config import settings
 
 
-s3 = boto3.client(
-    "s3",
-    endpoint_url=settings.s3_endpoint_url,
+_kwargs = dict(
     aws_access_key_id=settings.s3_access_key,
     aws_secret_access_key=settings.s3_secret_key,
+    region_name=settings.s3_region,
 )
+if settings.s3_endpoint_url:
+    _kwargs["endpoint_url"] = settings.s3_endpoint_url
+
+s3 = boto3.client("s3", **_kwargs)
 
 
 def upload_file(file_bytes: bytes, filename: str, content_type: str) -> str:

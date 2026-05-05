@@ -15,8 +15,8 @@ Built as a prototype for an Enbridge VP demo.
 | API | FastAPI |
 | Auth | python-jose (JWT) + bcrypt |
 | Object Storage | AWS S3 (boto3) |
-| Map | MapLibre GL JS (CDN) + MapTiler satellite tiles |
-| Frontend | Plain HTML + JS (no framework) |
+| Map | MapLibre GL JS 4 (CDN) + MapTiler satellite tiles |
+| Frontend | React 18 + Babel standalone (no build step) |
 | Dev Infra | Docker Compose |
 
 ---
@@ -40,13 +40,17 @@ archive-base/
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
-│   ├── index.html               # Login page
-│   ├── map.html                 # Satellite map + document panel
-│   ├── js/
-│   │   ├── api.js               # All fetch() calls — centralized
-│   │   ├── auth.js              # Login flow
-│   │   └── map.js               # MapLibre, pins, RBAC gating
-│   └── css/style.css
+│   ├── index.html               # Entry point — loads all JSX via Babel standalone
+│   └── archive/
+│       ├── app.jsx              # Root component, app state, routing
+│       ├── map.jsx              # MapLibre GL wrapper, pin markers, route layers
+│       ├── controls.jsx         # Scrubber, OverviewCard, toolbar controls
+│       ├── login.jsx            # Login form + animated satellite background
+│       ├── sheet.jsx            # Side panel — pin details, document list, upload
+│       ├── api.jsx              # All fetch() calls — centralized
+│       ├── data.jsx             # MockData helpers, route geometry, map style URLs
+│       ├── icons.jsx            # SVG icon components
+│       └── styles.css           # All styles — glass morphism, pin markers, layout
 ├── scripts/
 │   └── seed.py                  # Seed demo pipeline + users
 ├── docker-compose.yml
@@ -151,10 +155,10 @@ MAPTILER_API_KEY=your-maptiler-key
 
 ### 3. Set your MapTiler key in the frontend
 
-Open `frontend/js/map.js` and replace the placeholder near the top of the `map.on("load")` block:
+Open `frontend/archive/data.jsx` and replace the dev fallback key near the top:
 
 ```js
-const MAPTILER_KEY = "your-maptiler-key-here";
+let _mapKey = "your-maptiler-key-here";
 ```
 
 ### 4. Start the stack
@@ -205,7 +209,7 @@ API docs at **http://localhost:8000/docs**
 ## Demo Flow (3 minutes)
 
 1. Log in as `admin@enbridge.com`
-2. Pan to the amber pipeline route on the satellite map
+2. The pipeline route loads automatically — segments are color-coded by construction status
 3. Click any **KP pin** → side panel opens
 4. View attached documents → click **Download** → file opens
 5. Upload a new document via the drag-drop zone → appears immediately

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
+from sqlalchemy import BigInteger, Column, Integer, String, DateTime, ForeignKey, func
 
 from app.database import Base
 
@@ -11,5 +11,6 @@ class Document(Base):
     filename = Column(String, nullable=False)
     s3_key = Column(String, nullable=False)
     content_type = Column(String, nullable=False)
+    size_bytes = Column(BigInteger, nullable=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())

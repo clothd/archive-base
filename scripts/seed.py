@@ -38,19 +38,21 @@ def run():
 
     # ── Users ────────────────────────────────────────────────
     users_data = [
-        ("admin@enbridge.com", "admin123", UserRole.admin),
-        ("editor@enbridge.com", "editor123", UserRole.editor),
-        ("viewer@enbridge.com", "viewer123", UserRole.viewer),
+        ("admin@enbridge.com", "admin123", UserRole.admin, "Avery Reid"),
+        ("editor@enbridge.com", "editor123", UserRole.editor, "Morgan Chen"),
+        ("viewer@enbridge.com", "viewer123", UserRole.viewer, "Sam Patel"),
     ]
 
     users = {}
-    for email, password, role in users_data:
+    for email, password, role, name in users_data:
         existing = db.query(User).filter(User.email == email).first()
         if existing:
+            if not existing.name:
+                existing.name = name
             users[email] = existing
             print(f"  User already exists: {email}")
         else:
-            user = User(email=email, hashed_password=hash_password(password), role=role)
+            user = User(email=email, name=name, hashed_password=hash_password(password), role=role)
             db.add(user)
             db.flush()
             users[email] = user
@@ -101,7 +103,13 @@ def run():
     # ── Chainage pins ─────────────────────────────────────────
     # If reseeding, wipe existing pins for this pipeline first
     if RESEED:
-        deleted = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline.id).delete()
+        pin_ids = [p.id for p in db.query(ChainagePin.id).filter(ChainagePin.pipeline_id == pipeline.id)]
+        if pin_ids:
+            from app.models.document import Document
+            doc_deleted = db.query(Document).filter(Document.pin_id.in_(pin_ids)).delete(synchronize_session=False)
+            db.flush()
+            print(f"  Deleted {doc_deleted} documents")
+        deleted = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline.id).delete(synchronize_session=False)
         db.flush()
         print(f"  Deleted {deleted} existing pins (reseed mode)")
 
@@ -114,6 +122,12 @@ def run():
         route_line = LineString(route_coords)
         num_pins = 21  # KP 42+000 → KP 52+000 in 0.5 km steps
         start_kp = 42.0
+        statuses = [
+            "complete", "complete", "complete", "in-progress", "complete",
+            "in-progress", "complete", "complete", "complete", "blocked",
+            "in-progress", "in-progress", "pending", "pending", "pending",
+            "pending", "complete", "in-progress", "complete", "pending", "complete",
+        ]
 
         for i in range(num_pins):
             fraction = i / (num_pins - 1)
@@ -128,6 +142,7 @@ def run():
                 chainage_km=kp,
                 geometry=from_shape(Point(pt.x, pt.y), srid=4326),
                 label=label,
+                status=statuses[i],
             )
             db.add(pin)
 

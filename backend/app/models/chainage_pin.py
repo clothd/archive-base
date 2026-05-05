@@ -12,4 +12,5 @@ class ChainagePin(Base):
     chainage_km = Column(Float, nullable=False)
     geometry = Column(Geometry("POINT", srid=4326), nullable=False)
     label = Column(String, nullable=False)
+    status = Column(String(20), nullable=False, server_default="pending")
     created_at = Column(DateTime, server_default=func.now())

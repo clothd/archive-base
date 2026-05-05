@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
+
 app = FastAPI(title="ArcHive API")
 
 # MUST be added before routers
@@ -23,3 +25,8 @@ app.include_router(documents.router, prefix="/documents", tags=["documents"])
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/config")
+def get_config():
+    return {"maptiler_key": settings.maptiler_api_key}

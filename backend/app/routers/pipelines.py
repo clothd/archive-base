@@ -4,11 +4,13 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from geoalchemy2.functions import ST_AsGeoJSON, ST_ClosestPoint, ST_GeomFromText
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user, require_role
 from app.dependencies.db import get_db
 from app.models.chainage_pin import ChainagePin
+from app.models.document import Document
 from app.models.pipeline import Pipeline
 from app.models.user import User
 from app.schemas.pipeline import PipelineOut
@@ -58,7 +60,20 @@ def get_pipeline_pins(
     pipeline = db.get(Pipeline, pipeline_id)
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline not found")
-    pins = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline_id).all()
+
+    pins = db.query(ChainagePin).filter(ChainagePin.pipeline_id == pipeline_id).order_by(ChainagePin.chainage_km).all()
+
+    pin_ids = [p.id for p in pins]
+    counts = {}
+    if pin_ids:
+        rows = (
+            db.query(Document.pin_id, func.count(Document.id).label("cnt"))
+            .filter(Document.pin_id.in_(pin_ids))
+            .group_by(Document.pin_id)
+            .all()
+        )
+        counts = {r.pin_id: r.cnt for r in rows}
+
     features = []
     for pin in pins:
         geom_json = db.scalar(ST_AsGeoJSON(pin.geometry))
@@ -69,6 +84,8 @@ def get_pipeline_pins(
                 "id": pin.id,
                 "label": pin.label,
                 "chainage_km": pin.chainage_km,
+                "status": pin.status,
+                "doc_count": counts.get(pin.id, 0),
             },
         })
     return {"type": "FeatureCollection", "features": features}
@@ -85,7 +102,6 @@ def create_pin(
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline not found")
 
-    # Snap the click coordinates to the nearest point on the pipeline route
     click_wkt = f"POINT({payload.lng} {payload.lat})"
     snapped_geom = db.scalar(
         ST_ClosestPoint(
@@ -99,6 +115,7 @@ def create_pin(
         chainage_km=payload.chainage_km,
         label=payload.label,
         geometry=snapped_geom,
+        status="pending",
     )
     db.add(pin)
     db.commit()
@@ -107,5 +124,11 @@ def create_pin(
     return {
         "type": "Feature",
         "geometry": json.loads(geom_json),
-        "properties": {"id": pin.id, "label": pin.label, "chainage_km": pin.chainage_km},
+        "properties": {
+            "id": pin.id,
+            "label": pin.label,
+            "chainage_km": pin.chainage_km,
+            "status": pin.status,
+            "doc_count": 0,
+        },
     }
